@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -195,6 +196,21 @@ func getRawLinks(m *discordgo.Message) []*fileItem {
 
 func getDownloadLinks(inputURL string, channelID string) map[string]string {
 	logPrefixErrorHere := color.HiRedString("[getDownloadLinks]")
+	/*
+		Throw out photo/[0-9]+ and mobile.
+		Throw out trailing slash.
+
+		These are specifically for Twitter. Why are they not in their respective if cases?
+		Sometimes MatchString(inputURL) is called multiple (3 or so) times with the same url, somehow gets around else { return nil }
+		and goes down the execution chain, causing unsupported type text.
+	*/
+
+	inputURL = strings.ReplaceAll(inputURL, "mobile.twitter", "twitter")
+	photo := regexp.MustCompile(`(\/)?photo(\/)?([0-9]+)?(\/)?$`)
+	trailingslash := regexp.MustCompile(`(\/)$`)
+
+	inputURL = photo.ReplaceAllString(inputURL, "")
+	inputURL = trailingslash.ReplaceAllString(inputURL, "")
 
 	/* TODO: Download Support...
 	- TikTok: Tried, once the connection is closed the cdn URL is rendered invalid
@@ -210,6 +226,9 @@ func getDownloadLinks(inputURL string, channelID string) map[string]string {
 			}
 		} else if len(links) > 0 {
 			return trimDownloadedLinks(links, channelID)
+		} else {
+			//stop looking for link matches here. fixes unsupported type on twitter
+			return nil
 		}
 	}
 	if regexUrlTwitterStatus.MatchString(inputURL) {
@@ -220,6 +239,9 @@ func getDownloadLinks(inputURL string, channelID string) map[string]string {
 			}
 		} else if len(links) > 0 {
 			return trimDownloadedLinks(links, channelID)
+		} else {
+			//stop looking for link matches here. fixes unsupported type on twitter
+			return nil
 		}
 	}
 
@@ -584,7 +606,7 @@ func tryDownload(inputURL string, filename string, path string, message *discord
 					log.Println(logPrefixFileSkip, color.GreenString("Unpermitted extension (%s) found at %s", extension, inputURL))
 				}
 
-				file, ferr := os.OpenFile(message.ChannelID + ".txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+				file, ferr := os.OpenFile(message.ChannelID+".txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 				if err != nil {
 					fmt.Println(ferr)
 				}
@@ -664,7 +686,7 @@ func tryDownload(inputURL string, filename string, path string, message *discord
 				log.Println(logPrefixFileSkip, color.GreenString("Unpermitted filetype (%s) found at %s", contentTypeFound, inputURL))
 			}
 
-			file, ferr := os.OpenFile(message.ChannelID + ".txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+			file, ferr := os.OpenFile(message.ChannelID+".txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 			if err != nil {
 				fmt.Println(ferr)
 			}

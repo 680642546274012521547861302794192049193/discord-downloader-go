@@ -559,7 +559,7 @@ func tryDownload(inputURL string, filename string, path string, message *discord
 
 		// Download duration
 		if config.DebugOutput && !historyCmd {
-			log.Println(logPrefixDebug, color.YellowString("#%d - %s to download.", thisDownloadID, durafmt.ParseShort(time.Since(startTime)).String()))
+			//log.Println(logPrefixDebug, color.YellowString("#%d - %s to download.", thisDownloadID, durafmt.ParseShort(time.Since(startTime)).String()))
 		}
 		downloadTime := time.Now()
 
@@ -882,7 +882,7 @@ func tryDownload(inputURL string, filename string, path string, message *discord
 
 		// Write duration
 		if config.DebugOutput && !historyCmd {
-			log.Println(logPrefixDebug, color.YellowString("#%d - %s to save.", thisDownloadID, durafmt.ParseShort(time.Since(downloadTime)).String()))
+			//log.Println(logPrefixDebug, color.YellowString("#%d - %s to save.", thisDownloadID, durafmt.ParseShort(time.Since(downloadTime)).String()))
 		}
 		writeTime := time.Now()
 
@@ -909,7 +909,7 @@ func tryDownload(inputURL string, filename string, path string, message *discord
 
 		// Storage & output duration
 		if config.DebugOutput && !historyCmd {
-			log.Println(logPrefixDebug, color.YellowString("#%d - %s to update database.", thisDownloadID, durafmt.ParseShort(time.Since(writeTime)).String()))
+			//log.Println(logPrefixDebug, color.YellowString("#%d - %s to update database.", thisDownloadID, durafmt.ParseShort(time.Since(writeTime)).String()))
 		}
 		finishTime := time.Now()
 
@@ -966,7 +966,7 @@ func tryDownload(inputURL string, filename string, path string, message *discord
 		}
 
 		if config.DebugOutput && !historyCmd {
-			log.Println(logPrefixDebug, color.YellowString("#%d - %s total.", thisDownloadID, time.Since(startTime)))
+			//log.Println(logPrefixDebug, color.YellowString("#%d - %s total.", thisDownloadID, time.Since(startTime)))
 		}
 
 		// Log Links to File

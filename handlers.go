@@ -276,7 +276,7 @@ func handleMessage(m *discordgo.Message, edited bool, history bool) int64 {
 					if strings.Contains(m.Content, phrase) {
 						shouldAbort = true
 						if config.DebugOutput {
-							if config.showMessages {
+							if config.ShowMessages {
 								log.Println(logPrefixDebug, color.HiMagentaString("(FILTER)"), color.YellowString("blockedPhrases found \"%s\" in message, planning to abort...", phrase))
 							}
 						}
@@ -289,7 +289,7 @@ func handleMessage(m *discordgo.Message, edited bool, history bool) int64 {
 					if strings.Contains(m.Content, phrase) {
 						shouldAbort = false
 						if config.DebugOutput {
-							if config.showMessages {
+							if config.ShowMessages {
 								log.Println(logPrefixDebug, color.HiMagentaString("(FILTER)"), color.YellowString("allowedPhrases found \"%s\" in message, planning to process...", phrase))
 							}
 						}
@@ -302,7 +302,7 @@ func handleMessage(m *discordgo.Message, edited bool, history bool) int64 {
 				if stringInSlice(m.Author.ID, *channelConfig.Filters.BlockedUsers) {
 					shouldAbort = true
 					if config.DebugOutput {
-						if config.showMessages {
+						if config.ShowMessages {
 							log.Println(logPrefixDebug, color.HiMagentaString("(FILTER)"), color.YellowString("blockedUsers caught %s, planning to abort...", m.Author.ID))
 						}
 					}
@@ -312,7 +312,7 @@ func handleMessage(m *discordgo.Message, edited bool, history bool) int64 {
 				if stringInSlice(m.Author.ID, *channelConfig.Filters.AllowedUsers) {
 					shouldAbort = false
 					if config.DebugOutput {
-						if config.showMessages {
+						if config.ShowMessages {
 							log.Println(logPrefixDebug, color.HiMagentaString("(FILTER)"), color.YellowString("allowedUsers caught %s, planning to process...", m.Author.ID))
 						}
 					}
@@ -324,7 +324,7 @@ func handleMessage(m *discordgo.Message, edited bool, history bool) int64 {
 					if stringInSlice(role, *channelConfig.Filters.BlockedRoles) {
 						shouldAbort = true
 						if config.DebugOutput {
-							if config.showMessages {
+							if config.ShowMessages {
 								log.Println(logPrefixDebug, color.HiMagentaString("(FILTER)"), color.YellowString("blockedRoles caught %s, planning to abort...", role))
 							}
 						}
@@ -337,7 +337,7 @@ func handleMessage(m *discordgo.Message, edited bool, history bool) int64 {
 					if stringInSlice(role, *channelConfig.Filters.AllowedRoles) {
 						shouldAbort = false
 						if config.DebugOutput {
-							if config.showMessages {
+							if config.ShowMessages {
 								log.Println(logPrefixDebug, color.HiMagentaString("(FILTER)"), color.YellowString("allowedRoles caught %s, planning to allow...", role))
 							}
 						}
@@ -349,14 +349,14 @@ func handleMessage(m *discordgo.Message, edited bool, history bool) int64 {
 			// Abort
 			if shouldAbort {
 				if config.DebugOutput {
-					if config.showMessages {
+					if config.ShowMessages {
 						log.Println(logPrefixDebug, color.HiMagentaString("(FILTER)"), color.HiYellowString("Filter decided to ignore message..."))
 					}
 				}
 				return -1
 			} else {
 				if config.DebugOutput {
-					if config.showMessages {
+					if config.ShowMessages {
 						log.Println(logPrefixDebug, color.HiMagentaString("(FILTER)"), color.HiYellowString("Filter approved message..."))
 					}
 				}

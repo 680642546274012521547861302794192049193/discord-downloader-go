@@ -496,7 +496,7 @@ func tryDownload(inputURL string, filename string, path string, message *discord
 	cachedDownloadID++
 	thisDownloadID := cachedDownloadID
 
-	startTime := time.Now()
+	//startTime := time.Now()
 
 	logPrefixErrorHere := color.HiRedString("[tryDownload]")
 	logPrefix := ""
@@ -561,7 +561,7 @@ func tryDownload(inputURL string, filename string, path string, message *discord
 		if config.DebugOutput && !historyCmd {
 			//log.Println(logPrefixDebug, color.YellowString("#%d - %s to download.", thisDownloadID, durafmt.ParseShort(time.Since(startTime)).String()))
 		}
-		downloadTime := time.Now()
+		//downloadTime := time.Now()
 
 		// Read
 		bodyOfResp, err := ioutil.ReadAll(response.Body)
@@ -884,7 +884,7 @@ func tryDownload(inputURL string, filename string, path string, message *discord
 		if config.DebugOutput && !historyCmd {
 			//log.Println(logPrefixDebug, color.YellowString("#%d - %s to save.", thisDownloadID, durafmt.ParseShort(time.Since(downloadTime)).String()))
 		}
-		writeTime := time.Now()
+		//writeTime := time.Now()
 
 		// Output
 		log.Println(logPrefix + color.HiGreenString("SAVED %s sent in %s#%s to \"%s\"", strings.ToUpper(contentTypeFound), sourceName, sourceChannelName, completePath))

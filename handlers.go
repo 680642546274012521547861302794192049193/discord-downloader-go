@@ -139,7 +139,7 @@ func handleMessage(m *discordgo.Message, edited bool, history bool) int64 {
 		}
 
 		// Log
-		if !config.ShowMessages && !config.DebugOutput {
+		if !config.ShowMessages {
 			//nothing
 		} else {
 			var sendLabel string

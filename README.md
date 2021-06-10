@@ -613,7 +613,7 @@ This setup exempts many options so they will use default values _(see below)_. I
 * :small_blue_diamond: "showMessages"
     * — _settings.showMessages : boolean_
     * _Default:_ `true`
-    * Show all messages. debugOutput set to true overrides this.
+    * Show all messages.
 * :small_blue_diamond: "commandPrefix"
     * — _settings.commandPrefix : string_
     * _Default:_ `"ddg "`

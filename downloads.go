@@ -140,13 +140,13 @@ func trimDuplicateLinks(fileItems []*fileItem) []*fileItem {
 	return result
 }
 
-func customLogging0(channelID string, inputURL string, errtype string) error {
+func customLogging0(prefix string, channelID string, inputURL string, errtype string) error {
 	file, ferr := os.OpenFile(channelID+".txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if ferr != nil {
 		fmt.Println(ferr)
 		return ferr
 	}
-	_, werr := file.WriteString(inputURL + " (" + errtype + ")\n")
+	_, werr := file.WriteString("[" + prefix + "] " + inputURL + " (" + errtype + ")\n")
 	if werr != nil {
 		fmt.Println(werr)
 		return werr
@@ -213,6 +213,7 @@ func getDownloadLinks(inputURL string, channelID string) map[string]string {
 	logPrefixErrorHere := color.HiRedString("[getDownloadLinks]")
 	/*
 		Throw out photo/[0-9]+ and mobile.
+		Can throw out ?s=[0-9]+.
 		Throw out trailing slash.
 
 		These are specifically for Twitter. Why are they not in their respective if cases?
@@ -222,9 +223,11 @@ func getDownloadLinks(inputURL string, channelID string) map[string]string {
 
 	inputURL = strings.ReplaceAll(inputURL, "mobile.twitter", "twitter")
 	photo := regexp.MustCompile(`(\/)?photo(\/)?([0-9]+)?(\/)?$`)
+	//sq := regexp.MustCompile(`(\?s=)[0-9]+$`)
 	trailingslash := regexp.MustCompile(`(\/)$`)
 
 	inputURL = photo.ReplaceAllString(inputURL, "")
+	//inputURL = sq.ReplaceAllString(inputURL, "")
 	inputURL = trailingslash.ReplaceAllString(inputURL, "")
 
 	/* TODO: Download Support...
@@ -621,7 +624,7 @@ func tryDownload(inputURL string, filename string, path string, message *discord
 					log.Println(logPrefixFileSkip, color.GreenString("Unpermitted extension (%s) found at %s", extension, inputURL))
 				}
 
-				_ = customLogging0(message.ChannelID, inputURL, "Unpermitted extension")
+				_ = customLogging0(time.Now().Format(time.Stamp), message.ChannelID, inputURL, "Unpermitted extension")
 
 				return mDownloadStatus(downloadSkippedUnpermittedExtension)
 			}
@@ -650,7 +653,7 @@ func tryDownload(inputURL string, filename string, path string, message *discord
 		// Filename validation
 		if !regexFilename.MatchString(filename) {
 
-			_ = customLogging0(message.ChannelID, inputURL, "Invalid Filename")
+			_ = customLogging0(time.Now().Format(time.Stamp), message.ChannelID, inputURL, "Invalid Filename")
 
 			filename = "InvalidFilename"
 			possibleExtension, _ := mime.ExtensionsByType(contentType)
@@ -696,7 +699,7 @@ func tryDownload(inputURL string, filename string, path string, message *discord
 				log.Println(logPrefixFileSkip, color.GreenString("Unpermitted filetype (%s) found at %s", contentTypeFound, inputURL))
 			}
 
-			_ = customLogging0(message.ChannelID, inputURL, "Unsupported filetype")
+			_ = customLogging0(time.Now().Format(time.Stamp), message.ChannelID, inputURL, "Unsupported filetype")
 
 			return mDownloadStatus(downloadSkippedUnpermittedType)
 		}

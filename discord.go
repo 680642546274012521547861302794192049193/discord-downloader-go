@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	DISCORD_EPOCH = 1420070400000
+	discordEpoch = 1420070400000
 )
 
 //TODO: Clean these two
@@ -22,7 +22,7 @@ const (
 func discordTimestampToSnowflake(format string, timestamp string) string {
 	t, err := time.Parse(format, timestamp)
 	if err == nil {
-		return fmt.Sprint(((t.Local().UnixNano() / int64(time.Millisecond)) - DISCORD_EPOCH) << 22)
+		return fmt.Sprint(((t.Local().UnixNano() / int64(time.Millisecond)) - discordEpoch) << 22)
 	}
 	log.Println(color.HiRedString("Failed to convert timestamp to discord snowflake... Format: '%s', Timestamp: '%s' - Error:\t%s",
 		format, timestamp, err),
@@ -35,7 +35,7 @@ func discordSnowflakeToTimestamp(snowflake string, format string) string {
 	if err != nil {
 		return ""
 	}
-	t := time.Unix(0, ((i>>22)+DISCORD_EPOCH)*1000000)
+	t := time.Unix(0, ((i>>22)+discordEpoch)*1000000)
 	return t.Local().Format(format)
 }
 
@@ -285,38 +285,67 @@ func replyEmbed(m *discordgo.Message, title string, description string) (*discor
 				Embed:   buildEmbed(m.ChannelID, title, description),
 			},
 		)
-	} else {
-		log.Println(color.HiRedString(fmtBotSendPerm, m.ChannelID))
-		return nil, nil
 	}
+
+	log.Println(color.HiRedString(fmtBotSendPerm, m.ChannelID))
+	return nil, nil
 }
 
-func logStatusMessage(status string) {
+type logStatusType int
+
+const (
+	logStatusStartup logStatusType = iota
+	logStatusReconnect
+	logStatusExit
+)
+
+func logStatusLabel(status logStatusType) string {
+	switch status {
+	case logStatusStartup:
+		return "has launched"
+	case logStatusReconnect:
+		return "has reconnected"
+	case logStatusExit:
+		return "is exiting"
+	}
+	return "<<ERROR>>"
+}
+
+func logStatusMessage(status logStatusType) {
 	for _, adminChannel := range config.AdminChannels {
 		if *adminChannel.LogStatus {
-			message := fmt.Sprintf("%s has %s and connected to %d server(s)...\n", projectLabel, status, len(bot.State.Guilds))
-			message += fmt.Sprintf("\n• Uptime is %s", uptime())
-			message += fmt.Sprintf("\n• %s total downloads", formatNumber(int64(dbDownloadCount())))
-			message += fmt.Sprintf("\n• Bound to %d channel(s) and %d server(s)", getBoundChannelsCount(), getBoundServersCount())
-			if config.All != nil {
-				message += "\n• **ALL MODE ENABLED -** Bot will use all available channels"
-			}
-			message += fmt.Sprintf("\n• ***Listening to %s channel(s)...***\n", formatNumber(int64(len(getAllChannels()))))
-			if twitterConnected {
-				message += "\n• Connected to Twitter API"
-			}
-			if googleDriveConnected {
-				message += "\n• Connected to Google Drive"
+			var message string
+
+			if status == logStatusStartup || status == logStatusReconnect {
+				message += fmt.Sprintf("%s %s and connected to %d server(s)...\n", projectLabel, logStatusLabel(status), len(bot.State.Guilds))
+				message += fmt.Sprintf("\n• Uptime is %s", uptime())
+				message += fmt.Sprintf("\n• %s total downloads", formatNumber(int64(dbDownloadCount())))
+				message += fmt.Sprintf("\n• Bound to %d channel(s) and %d server(s)", getBoundChannelsCount(), getBoundServersCount())
+				if config.All != nil {
+					message += "\n• **ALL MODE ENABLED -** Bot will use all available channels"
+				}
+				message += fmt.Sprintf("\n• ***Listening to %s channel(s)...***\n", formatNumber(int64(len(getAllChannels()))))
+				if twitterConnected {
+					message += "\n• Connected to Twitter API"
+				}
+				if googleDriveConnected {
+					message += "\n• Connected to Google Drive"
+				}
+			} else if status == logStatusExit {
+				message += fmt.Sprintf("%s %s...\n", projectLabel, logStatusLabel(status))
+				message += fmt.Sprintf("\n• Uptime was %s", uptime())
+				message += fmt.Sprintf("\n• %s total downloads", formatNumber(int64(dbDownloadCount())))
+				message += fmt.Sprintf("\n• Bound to %d channel(s) and %d server(s)", getBoundChannelsCount(), getBoundServersCount())
 			}
 			// Send
 			if hasPerms(adminChannel.ChannelID, discordgo.PermissionEmbedLinks) { // not confident this is the right permission
 				if config.DebugOutput {
-					log.Println(logPrefixDebug, color.HiCyanString("Sending embed log for startup to %s", adminChannel.ChannelID))
+					log.Println(logPrefixDebug, color.HiCyanString("Sending embed log for startup to admin channel %s", adminChannel.ChannelID))
 				}
 				bot.ChannelMessageSendEmbed(adminChannel.ChannelID, buildEmbed(adminChannel.ChannelID, "Log — Status", message))
 			} else if hasPerms(adminChannel.ChannelID, discordgo.PermissionSendMessages) {
 				if config.DebugOutput {
-					log.Println(logPrefixDebug, color.HiCyanString("Sending message log for startup to %s", adminChannel.ChannelID))
+					log.Println(logPrefixDebug, color.HiCyanString("Sending message log for startup to admin channel %s", adminChannel.ChannelID))
 				}
 				bot.ChannelMessageSend(adminChannel.ChannelID, message)
 			} else {
@@ -482,4 +511,43 @@ func messageToLower(message *discordgo.Message) *discordgo.Message {
 	newMessage := *message
 	newMessage.Content = strings.ToLower(newMessage.Content)
 	return &newMessage
+}
+
+func fixMessage(m *discordgo.Message) *discordgo.Message {
+	// If message content is empty (likely due to userbot/selfbot)
+	ubIssue := "Message is corrupted due to endpoint restriction"
+	if m.Content == "" && len(m.Attachments) == 0 {
+		// Get message history
+		mCache, err := bot.ChannelMessages(m.ChannelID, 20, "", "", "")
+		if err == nil {
+			if len(mCache) > 0 {
+				for _, mCached := range mCache {
+					if mCached.ID == m.ID {
+						// Fix original message having empty Guild ID
+						guildID := m.GuildID
+						// Replace message
+						m = mCached
+						// ^^
+						if m.GuildID == "" && guildID != "" {
+							m.GuildID = guildID
+						}
+						// Parse commands
+						dgr.FindAndExecute(bot, strings.ToLower(config.CommandPrefix), bot.State.User.ID, messageToLower(m))
+
+						break
+					}
+				}
+			} else if config.DebugOutput {
+				log.Println(logPrefixDebug, color.RedString("%s, and an attempt to get channel messages found nothing...", ubIssue))
+			}
+		} else if config.DebugOutput {
+			log.Println(logPrefixDebug, color.HiRedString("%s, and an attempt to get channel messages encountered an error:\t%s", ubIssue, err))
+		}
+	}
+	if m.Content == "" && len(m.Attachments) == 0 {
+		if config.DebugOutput {
+			log.Println(logPrefixDebug, color.YellowString("%s, and attempts to fix seem to have failed...", ubIssue))
+		}
+	}
+	return m
 }

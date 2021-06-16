@@ -47,62 +47,23 @@ func handleMessage(m *discordgo.Message, edited bool, history bool) int64 {
 
 	// Admin Channel
 	if isAdminChannelRegistered(m.ChannelID) {
-		//TODO: Make this its own function
-		// If message content is empty (likely due to userbot/selfbot)
-		ubIssue := "Message is corrupted due to endpoint restriction"
-		if m.Content == "" && len(m.Attachments) == 0 {
-			// Get message history
-			mCache, err := bot.ChannelMessages(m.ChannelID, 25, "", "", "")
-			if err == nil {
-				if len(mCache) > 0 {
-					for _, mCached := range mCache {
-						if mCached.ID == m.ID {
-							// Fix original message having empty Guild ID
-							guildID := m.GuildID
-							// Replace message
-							m = mCached
-							// ^^
-							if m.GuildID == "" && guildID != "" {
-								m.GuildID = guildID
-							}
-							// Parse commands
-							dgr.FindAndExecute(bot, strings.ToLower(config.CommandPrefix), bot.State.User.ID, messageToLower(m))
-
-							break
-						}
-					}
-				} else if config.DebugOutput {
-					log.Println(logPrefixDebug, color.RedString("%s, and an attempt to get channel messages found nothing...", ubIssue))
-				}
-			} else if config.DebugOutput {
-				log.Println(logPrefixDebug, color.HiRedString("%s, and an attempt to get channel messages encountered an error:\t%s", ubIssue, err))
-			}
-		}
-		if m.Content == "" && len(m.Attachments) == 0 {
-			if config.DebugOutput {
-				log.Println(logPrefixDebug, color.YellowString("%s, and attempts to fix seem to have failed...", ubIssue))
-			}
-		}
+		m = fixMessage(m)
 
 		// Log
-		if !config.ShowMessages {
-			//nothing
+		var sendLabel string
+		if config.DebugOutput {
+			sendLabel = fmt.Sprintf("%s/%s/%s", m.GuildID, m.ChannelID, m.Author.ID)
 		} else {
-			var sendLabel string
-			if config.DebugOutput {
-				sendLabel = fmt.Sprintf("%s/%s/%s", m.GuildID, m.ChannelID, m.Author.ID)
-			} else {
-				sendLabel = fmt.Sprintf("%s in %s", getUserIdentifier(*m.Author), getSourceName(m.GuildID, m.ChannelID))
-			}
-			content := m.Content
-			if len(m.Attachments) > 0 {
-				content = content + fmt.Sprintf(" (%d attachments)", len(m.Attachments))
-			}
-			if edited {
-				log.Println(color.CyanString("Edited Message [%s]: %s", sendLabel, content))
-			} else {
-				log.Println(color.CyanString("Message [%s]: %s", sendLabel, content))
-			}
+			sendLabel = fmt.Sprintf("%s in %s", getUserIdentifier(*m.Author), getSourceName(m.GuildID, m.ChannelID))
+		}
+		content := m.Content
+		if len(m.Attachments) > 0 {
+			content = content + fmt.Sprintf(" (%d attachments)", len(m.Attachments))
+		}
+		if edited {
+			log.Println(color.CyanString("Edited Message [%s]: %s", sendLabel, content))
+		} else {
+			log.Println(color.CyanString("Message [%s]: %s", sendLabel, content))
 		}
 	}
 
@@ -118,30 +79,10 @@ func handleMessage(m *discordgo.Message, edited bool, history bool) int64 {
 			return -1
 		}
 
-		//TODO: Make this its own function
-		// If message content is empty (likely due to userbot/selfbot)
-		if m.Content == "" && len(m.Attachments) == 0 {
-			nms, err := bot.ChannelMessages(m.ChannelID, 10, "", "", "")
-			if err == nil {
-				if len(nms) > 0 {
-					for _, nm := range nms {
-						if nm.ID == m.ID {
-							id := m.GuildID
-							m = nm
-							if m.GuildID == "" && id != "" {
-								m.GuildID = id
-							}
-							dgr.FindAndExecute(bot, strings.ToLower(config.CommandPrefix), bot.State.User.ID, messageToLower(m))
-						}
-					}
-				}
-			}
-		}
+		m = fixMessage(m)
 
 		// Log
-		if !config.ShowMessages {
-			//nothing
-		} else {
+		if config.MessageOutput {
 			var sendLabel string
 			if config.DebugOutput {
 				sendLabel = fmt.Sprintf("%s/%s/%s", m.GuildID, m.ChannelID, m.Author.ID)
@@ -152,6 +93,7 @@ func handleMessage(m *discordgo.Message, edited bool, history bool) int64 {
 			if len(m.Attachments) > 0 {
 				content = content + fmt.Sprintf(" (%d attachments)", len(m.Attachments))
 			}
+
 			if edited {
 				log.Println(color.CyanString("Edited Message [%s]: %s", sendLabel, content))
 			} else {
@@ -276,9 +218,7 @@ func handleMessage(m *discordgo.Message, edited bool, history bool) int64 {
 					if strings.Contains(m.Content, phrase) {
 						shouldAbort = true
 						if config.DebugOutput {
-							if config.ShowMessages {
-								log.Println(logPrefixDebug, color.HiMagentaString("(FILTER)"), color.YellowString("blockedPhrases found \"%s\" in message, planning to abort...", phrase))
-							}
+							log.Println(logPrefixDebug, color.HiMagentaString("(FILTER)"), color.YellowString("blockedPhrases found \"%s\" in message, planning to abort...", phrase))
 						}
 						break
 					}
@@ -289,9 +229,7 @@ func handleMessage(m *discordgo.Message, edited bool, history bool) int64 {
 					if strings.Contains(m.Content, phrase) {
 						shouldAbort = false
 						if config.DebugOutput {
-							if config.ShowMessages {
-								log.Println(logPrefixDebug, color.HiMagentaString("(FILTER)"), color.YellowString("allowedPhrases found \"%s\" in message, planning to process...", phrase))
-							}
+							log.Println(logPrefixDebug, color.HiMagentaString("(FILTER)"), color.YellowString("allowedPhrases found \"%s\" in message, planning to process...", phrase))
 						}
 						break
 					}
@@ -302,9 +240,7 @@ func handleMessage(m *discordgo.Message, edited bool, history bool) int64 {
 				if stringInSlice(m.Author.ID, *channelConfig.Filters.BlockedUsers) {
 					shouldAbort = true
 					if config.DebugOutput {
-						if config.ShowMessages {
-							log.Println(logPrefixDebug, color.HiMagentaString("(FILTER)"), color.YellowString("blockedUsers caught %s, planning to abort...", m.Author.ID))
-						}
+						log.Println(logPrefixDebug, color.HiMagentaString("(FILTER)"), color.YellowString("blockedUsers caught %s, planning to abort...", m.Author.ID))
 					}
 				}
 			}
@@ -312,9 +248,7 @@ func handleMessage(m *discordgo.Message, edited bool, history bool) int64 {
 				if stringInSlice(m.Author.ID, *channelConfig.Filters.AllowedUsers) {
 					shouldAbort = false
 					if config.DebugOutput {
-						if config.ShowMessages {
-							log.Println(logPrefixDebug, color.HiMagentaString("(FILTER)"), color.YellowString("allowedUsers caught %s, planning to process...", m.Author.ID))
-						}
+						log.Println(logPrefixDebug, color.HiMagentaString("(FILTER)"), color.YellowString("allowedUsers caught %s, planning to process...", m.Author.ID))
 					}
 				}
 			}
@@ -324,9 +258,7 @@ func handleMessage(m *discordgo.Message, edited bool, history bool) int64 {
 					if stringInSlice(role, *channelConfig.Filters.BlockedRoles) {
 						shouldAbort = true
 						if config.DebugOutput {
-							if config.ShowMessages {
-								log.Println(logPrefixDebug, color.HiMagentaString("(FILTER)"), color.YellowString("blockedRoles caught %s, planning to abort...", role))
-							}
+							log.Println(logPrefixDebug, color.HiMagentaString("(FILTER)"), color.YellowString("blockedRoles caught %s, planning to abort...", role))
 						}
 						break
 					}
@@ -337,9 +269,7 @@ func handleMessage(m *discordgo.Message, edited bool, history bool) int64 {
 					if stringInSlice(role, *channelConfig.Filters.AllowedRoles) {
 						shouldAbort = false
 						if config.DebugOutput {
-							if config.ShowMessages {
-								log.Println(logPrefixDebug, color.HiMagentaString("(FILTER)"), color.YellowString("allowedRoles caught %s, planning to allow...", role))
-							}
+							log.Println(logPrefixDebug, color.HiMagentaString("(FILTER)"), color.YellowString("allowedRoles caught %s, planning to allow...", role))
 						}
 						break
 					}
@@ -349,19 +279,14 @@ func handleMessage(m *discordgo.Message, edited bool, history bool) int64 {
 			// Abort
 			if shouldAbort {
 				if config.DebugOutput {
-					if config.ShowMessages {
-						log.Println(logPrefixDebug, color.HiMagentaString("(FILTER)"), color.HiYellowString("Filter decided to ignore message..."))
-					}
+					log.Println(logPrefixDebug, color.HiMagentaString("(FILTER)"), color.HiYellowString("Filter decided to ignore message..."))
 				}
 				return -1
-			} else {
+			} /*else {
 				if config.DebugOutput {
-					if config.ShowMessages {
-						log.Println(logPrefixDebug, color.HiMagentaString("(FILTER)"), color.HiYellowString("Filter approved message..."))
-					}
+					log.Println(logPrefixDebug, color.HiMagentaString("(FILTER)"), color.HiYellowString("Filter approved message..."))
 				}
-			}
-
+			}*/
 		}
 
 		// Skipping
@@ -382,8 +307,9 @@ func handleMessage(m *discordgo.Message, edited bool, history bool) int64 {
 		var downloadCount int64
 		files := getFileLinks(m)
 		for _, file := range files {
-			log.Println(color.CyanString("> FILE: " + file.Link))
-
+			if config.DebugOutput {
+				log.Println(logPrefixDebug, color.CyanString("FOUND FILE: "+file.Link))
+			}
 			status := startDownload(
 				file.Link,
 				file.Filename,

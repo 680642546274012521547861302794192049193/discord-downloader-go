@@ -10,6 +10,7 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/fatih/color"
+	"github.com/muhammadmuzzammil1998/jsonc"
 	"gopkg.in/ini.v1"
 )
 
@@ -49,7 +50,7 @@ type configurationCredentials struct {
 var (
 	// Setup
 	cdDebugOutput          bool   = false
-	cdShowMessages         bool   = true
+	cdMessageOutput        bool   = true
 	cdCommandPrefix        string = "ddg "
 	cdAllowSkipping        bool   = true
 	cdScanOwnMessages      bool   = false
@@ -74,7 +75,7 @@ func defaultConfiguration() configuration {
 		// Setup
 		Admins:                         []string{},
 		DebugOutput:                    cdDebugOutput,
-		ShowMessages:                   cdShowMessages,
+		MessageOutput:                  cdMessageOutput,
 		CommandPrefix:                  cdCommandPrefix,
 		AllowSkipping:                  cdAllowSkipping,
 		ScanOwnMessages:                cdScanOwnMessages,
@@ -106,7 +107,7 @@ type configuration struct {
 	Admins                         []string                    `json:"admins"`                                   // optional
 	AdminChannels                  []configurationAdminChannel `json:"adminChannels"`                            // optional
 	DebugOutput                    bool                        `json:"debugOutput"`                              // optional, defaults
-	ShowMessages                   bool                        `json:"showMessages"`                             // optional, defaults
+	MessageOutput                  bool                        `json:"messageOutput"`                            // optional, defaults
 	CommandPrefix                  string                      `json:"commandPrefix"`                            // optional, defaults
 	AllowSkipping                  bool                        `json:"allowSkipping"`                            // optional, defaults
 	ScanOwnMessages                bool                        `json:"scanOwnMessages"`                          // optional, defaults
@@ -213,9 +214,9 @@ type configurationChannel struct {
 	SaveOtherFiles         *bool `json:"saveOtherFiles,omitempty"`         // optional, defaults
 	SavePossibleDuplicates *bool `json:"savePossibleDuplicates,omitempty"` // optional, defaults
 	// Misc Rules
-	Filters     *configurationChannel_Filters `json:"filters,omitempty"`     // optional
-	LogLinks    *configurationChannel_Log     `json:"logLinks,omitempty"`    // optional
-	LogMessages *configurationChannel_Log     `json:"logMessages,omitempty"` // optional
+	Filters     *configurationChannelFilters `json:"filters,omitempty"`     // optional
+	LogLinks    *configurationChannelLog     `json:"logLinks,omitempty"`    // optional
+	LogMessages *configurationChannelLog     `json:"logMessages,omitempty"` // optional
 }
 
 var (
@@ -239,7 +240,7 @@ var (
 	}
 )
 
-type configurationChannel_Filters struct {
+type configurationChannelFilters struct {
 	BlockedPhrases *[]string `json:"blockedPhrases,omitempty"` // optional
 	AllowedPhrases *[]string `json:"allowedPhrases,omitempty"` // optional
 
@@ -261,14 +262,20 @@ var (
 	ccldDivideLogsByServer  bool = true
 	ccldDivideLogsByChannel bool = true
 	ccldDivideLogsByUser    bool = false
+	ccldDivideLogsByStatus  bool = false
+	ccldLogDownloads        bool = true
+	ccldLogFailures         bool = true
 )
 
-type configurationChannel_Log struct {
+type configurationChannelLog struct {
 	Destination         string  `json:"destination"`                   // required
 	DestinationIsFolder *bool   `json:"destinationIsFolder,omitempty"` // optional, defaults
 	DivideLogsByServer  *bool   `json:"divideLogsByServer,omitempty"`  // optional, defaults
 	DivideLogsByChannel *bool   `json:"divideLogsByChannel,omitempty"` // optional, defaults
 	DivideLogsByUser    *bool   `json:"divideLogsByUser,omitempty"`    // optional, defaults
+	DivideLogsByStatus  *bool   `json:"divideLogsByStatus,omitempty"`  // optional, defaults
+	LogDownloads        *bool   `json:"logDownloads,omitempty"`        // optional, defaults
+	LogFailures         *bool   `json:"logFailures,omitempty"`         // optional, defaults
 	FilterDuplicates    *bool   `json:"filterDuplicates,omitempty"`    // optional, defaults
 	Prefix              *string `json:"prefix,omitempty"`              // optional
 	Suffix              *string `json:"suffix,omitempty"`              // optional
@@ -303,8 +310,16 @@ type configurationAdminChannel struct {
 //#endregion
 
 func loadConfig() {
+	// Determine settings file type
+	if _, err := os.Stat(configFileBase + ".json"); err == nil {
+		configFile = configFileBase + ".json"
+		configFileC = false
+	} else if _, err := os.Stat(configFileBase + ".jsonc"); err == nil {
+		configFile = configFileBase + ".jsonc"
+		configFileC = true
+	}
 	// Load settings
-	configContent, err := ioutil.ReadFile(configPath)
+	configContent, err := ioutil.ReadFile(configFile)
 	if err != nil {
 		log.Println(color.HiRedString("Failed to open settings file...\t%s", err))
 		createConfig()
@@ -320,7 +335,13 @@ func loadConfig() {
 
 		// Parse
 		newConfig := defaultConfiguration()
-		err = json.Unmarshal([]byte(fixed), &newConfig)
+		if configFileC {
+			log.Println(color.HiGreenString("aaa"))
+			err = jsonc.Unmarshal([]byte(fixed), &newConfig)
+		} else {
+			log.Println(color.HiGreenString("bbb"))
+			err = json.Unmarshal([]byte(fixed), &newConfig)
+		}
 		if err != nil {
 			log.Println(color.HiRedString("Failed to parse settings file...\t%s", err))
 			log.Println(logPrefixHelper, color.MagentaString("Please ensure you're following proper JSON format syntax."))
@@ -335,7 +356,13 @@ func loadConfig() {
 			}
 			// Re-parse
 			newConfig = defaultConfiguration()
-			err = json.Unmarshal([]byte(fixed), &newConfig)
+			if configFileC {
+				log.Println(color.HiGreenString("ccc"))
+				err = jsonc.Unmarshal([]byte(fixed), &newConfig)
+			} else {
+				log.Println(color.HiGreenString("ddd"))
+				err = json.Unmarshal([]byte(fixed), &newConfig)
+			}
 			if err != nil {
 				log.Println(color.HiRedString("Failed to re-parse settings file after replacing constants...\t%s", err))
 				log.Println(logPrefixHelper, color.MagentaString("Please ensure you're following proper JSON format syntax."))
@@ -378,7 +405,7 @@ func loadConfig() {
 			(config.Credentials.Email == "" || config.Credentials.Email == placeholderEmail) &&
 			(config.Credentials.Password == "" || config.Credentials.Password == placeholderPassword) {
 			log.Println(color.HiRedString("No valid discord login found. Token, Email, and Password are all invalid..."))
-			log.Println(color.HiYellowString("Please save your credentials & info into \"%s\" then restart...", configPath))
+			log.Println(color.HiYellowString("Please save your credentials & info into \"%s\" then restart...", configFile))
 			log.Println(logPrefixHelper, color.MagentaString("If your credentials are already properly saved, please ensure you're following proper JSON format syntax."))
 			log.Println(logPrefixHelper, color.MagentaString("You DO NOT NEED `Token` *AND* `Email`+`Password`, just one OR the other."))
 			properExit()
@@ -389,23 +416,17 @@ func loadConfig() {
 func createConfig() {
 	log.Println(logPrefixSetup, color.YellowString("Creating new settings file..."))
 
-	enteredToken := placeholderToken
-	enteredEmail := placeholderEmail
-	enteredPassword := placeholderPassword
-
-	enteredAdmin := "REPLACE_WITH_YOUR_DISCORD_USER_ID"
-
 	enteredBaseChannel := "REPLACE_WITH_DISCORD_CHANNEL_ID_TO_DOWNLOAD_FROM"
 	enteredBaseDestination := "REPLACE_WITH_FOLDER_LOCATION_TO_DOWNLOAD_TO"
 
 	// Separate from Defaultconfiguration because there's some elements we want to strip for settings creation
 	defaultConfig := configuration{
 		Credentials: configurationCredentials{
-			Token:    enteredToken,
-			Email:    enteredEmail,
-			Password: enteredPassword,
+			Token:    placeholderToken,
+			Email:    placeholderEmail,
+			Password: placeholderPassword,
 		},
-		Admins:          []string{enteredAdmin},
+		Admins:          []string{"REPLACE_WITH_YOUR_DISCORD_USER_ID"},
 		CommandPrefix:   cdCommandPrefix,
 		AllowSkipping:   cdAllowSkipping,
 		ScanOwnMessages: cdScanOwnMessages,
@@ -560,7 +581,7 @@ func createConfig() {
 				inputToken = strings.ReplaceAll(inputToken, "\n", "")
 				inputToken = strings.ReplaceAll(inputToken, "\r", "")
 				if inputToken != "" {
-					enteredToken = inputToken
+					defaultConfig.Credentials.Token = inputToken
 				} else {
 					log.Println(color.HiRedString("Please input token..."))
 					goto EnterToken
@@ -572,14 +593,14 @@ func createConfig() {
 				inputEmail = strings.ReplaceAll(inputEmail, "\n", "")
 				inputEmail = strings.ReplaceAll(inputEmail, "\r", "")
 				if strings.Contains(inputEmail, "@") {
-					enteredEmail = inputEmail
+					defaultConfig.Credentials.Email = inputEmail
 				EnterPassword:
 					log.Print(color.HiCyanString("Enter password: "))
 					inputPassword, _ := reader.ReadString('\n')
 					inputPassword = strings.ReplaceAll(inputPassword, "\n", "")
 					inputPassword = strings.ReplaceAll(inputPassword, "\r", "")
 					if inputPassword != "" {
-						enteredPassword = inputPassword
+						defaultConfig.Credentials.Password = inputPassword
 					} else {
 						log.Println(color.HiRedString("Please input password..."))
 						goto EnterPassword
@@ -599,7 +620,7 @@ func createConfig() {
 			inputAdmin = strings.ReplaceAll(inputAdmin, "\n", "")
 			inputAdmin = strings.ReplaceAll(inputAdmin, "\r", "")
 			if isNumeric(inputAdmin) {
-				enteredAdmin = inputAdmin
+				defaultConfig.Admins = []string{inputAdmin}
 			} else {
 				log.Println(color.HiRedString("Please input your Discord User ID..."))
 				goto EnterAdmin
@@ -617,12 +638,12 @@ func createConfig() {
 	if err != nil {
 		log.Println(logPrefixSetup, color.HiRedString("Failed to format new settings...\t%s", err))
 	} else {
-		err := ioutil.WriteFile(configPath, defaultJSON, 0644)
+		err := ioutil.WriteFile(configFile, defaultJSON, 0644)
 		if err != nil {
 			log.Println(logPrefixSetup, color.HiRedString("Failed to save new settings file...\t%s", err))
 		} else {
 			log.Println(logPrefixSetup, color.HiYellowString("Created new settings file..."))
-			log.Println(logPrefixSetup, color.HiYellowString("Please save your credentials & info into \"%s\" then restart...", configPath))
+			log.Println(logPrefixSetup, color.HiYellowString("Please save your credentials & info into \"%s\" then restart...", configFile))
 			log.Println(logPrefixHelper, color.MagentaString("You DO NOT NEED `Token` *AND* `Email`+`Password`, just one OR the other."))
 			log.Println(logPrefixHelper, color.MagentaString("See README on GitHub for help and more info..."))
 		}
@@ -697,7 +718,7 @@ func channelDefault(channel *configurationChannel) {
 	}
 
 	if channel.Filters == nil {
-		channel.Filters = &configurationChannel_Filters{}
+		channel.Filters = &configurationChannelFilters{}
 	}
 	if channel.Filters.BlockedExtensions == nil {
 		channel.Filters.BlockedExtensions = &ccfdBlockedExtensions
@@ -707,7 +728,7 @@ func channelDefault(channel *configurationChannel) {
 	}
 
 	if channel.LogLinks == nil {
-		channel.LogLinks = &configurationChannel_Log{}
+		channel.LogLinks = &configurationChannelLog{}
 	}
 	if channel.LogLinks.DestinationIsFolder == nil {
 		channel.LogLinks.DestinationIsFolder = &ccldDestinationIsFolder
@@ -721,9 +742,18 @@ func channelDefault(channel *configurationChannel) {
 	if channel.LogLinks.DivideLogsByUser == nil {
 		channel.LogLinks.DivideLogsByUser = &ccldDivideLogsByUser
 	}
+	if channel.LogLinks.DivideLogsByStatus == nil {
+		channel.LogLinks.DivideLogsByStatus = &ccldDivideLogsByStatus
+	}
+	if channel.LogLinks.LogDownloads == nil {
+		channel.LogLinks.LogDownloads = &ccldLogDownloads
+	}
+	if channel.LogLinks.LogFailures == nil {
+		channel.LogLinks.LogFailures = &ccldLogFailures
+	}
 
 	if channel.LogMessages == nil {
-		channel.LogMessages = &configurationChannel_Log{}
+		channel.LogMessages = &configurationChannelLog{}
 	}
 	if channel.LogMessages.DestinationIsFolder == nil {
 		channel.LogMessages.DestinationIsFolder = &ccldDestinationIsFolder

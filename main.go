@@ -194,7 +194,7 @@ func main() {
 	// Source Validation
 	var invalidSources int
 	if config.DebugOutput {
-		log.Println(logPrefixDebug, color.HiYellowString("Validating configured sources..."))
+		log.Println(logPrefixDebug, color.HiYellowString("Validating configured channels/servers..."))
 	}
 	if config.AdminChannels != nil {
 		for _, adminChannel := range config.AdminChannels {
@@ -242,9 +242,9 @@ func main() {
 	}
 	if config.DebugOutput {
 		if invalidSources > 0 {
-			log.Println(logPrefixDebug, color.HiRedString("Found %d invalid sources in configuration...", invalidSources))
+			log.Println(logPrefixDebug, color.HiRedString("Found %d invalid channels/servers in configuration...", invalidSources))
 		} else {
-			log.Println(logPrefixDebug, color.HiGreenString("All sources successfully validated!"))
+			log.Println(logPrefixDebug, color.HiGreenString("All channels/servers successfully validated!"))
 		}
 	}
 
@@ -262,7 +262,7 @@ func main() {
 	log.Println(color.RedString("CTRL+C to exit..."))
 
 	// Log Status
-	logStatusMessage("launched")
+	logStatusMessage(logStatusStartup)
 
 	//#region Background Tasks
 
@@ -286,7 +286,7 @@ func main() {
 					botLogin()
 					log.Println(color.HiGreenString("Reconnected! The bot *should* resume working..."))
 					// Log Status
-					logStatusMessage("reconnected")
+					logStatusMessage(logStatusReconnect)
 				}
 			}
 		}
@@ -362,6 +362,8 @@ func main() {
 	// Infinite loop until interrupted
 	signal.Notify(loop, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT, os.Interrupt, os.Kill)
 	<-loop
+
+	logStatusMessage(logStatusExit)
 
 	log.Println(color.GreenString("Logging out of discord..."))
 	bot.Close()

@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -195,6 +196,15 @@ func getRawLinks(m *discordgo.Message) []*fileItem {
 func getDownloadLinks(inputURL string, channelID string) map[string]string {
 	logPrefixErrorHere := color.HiRedString("[getDownloadLinks]")
 
+	inputURL = strings.ReplaceAll(inputURL, "mobile.twitter", "twitter")
+	photo := regexp.MustCompile(`(\/)?photo(\/)?([0-9]+)?(\/)?$`)
+	//sq := regexp.MustCompile(`(\?s=)[0-9]+$`)
+	trailingslash := regexp.MustCompile(`(\/)$`)
+
+	inputURL = photo.ReplaceAllString(inputURL, "")
+	//inputURL = sq.ReplaceAllString(inputURL, "")
+	inputURL = trailingslash.ReplaceAllString(inputURL, "")
+
 	/* TODO: Download Support...
 	- TikTok: Tried, once the connection is closed the cdn URL is rendered invalid
 	- Facebook Photos: Tried, it doesn't preload image data, it's loaded in after. Would have to keep connection open, find alternative way to grab, or use api.
@@ -209,7 +219,9 @@ func getDownloadLinks(inputURL string, channelID string) map[string]string {
 			}
 		} else if len(links) > 0 {
 			return trimDownloadedLinks(links, channelID)
-		}
+		} /* else {
+			return nil
+		}*/
 	}
 	if regexUrlTwitterStatus.MatchString(inputURL) {
 		links, err := getTwitterStatusUrls(inputURL, channelID)
@@ -219,7 +231,9 @@ func getDownloadLinks(inputURL string, channelID string) map[string]string {
 			}
 		} else if len(links) > 0 {
 			return trimDownloadedLinks(links, channelID)
-		}
+		} /* else {
+			return nil
+		}*/
 	}
 
 	if regexUrlInstagram.MatchString(inputURL) {
@@ -454,7 +468,12 @@ func startDownload(inputURL string, filename string, path string, message *disco
 		channelConfig := getChannelConfig(message.ChannelID)
 		if channelConfig.LogLinks != nil {
 			if channelConfig.LogLinks.Destination != "" {
-				logPath := channelConfig.LogLinks.Destination
+				var logPath string
+				if channelConfig.LogLinks.Destination == "workingdir" {
+					logPath, _ = os.Getwd()
+				} else {
+					logPath = channelConfig.LogLinks.Destination
+				}
 				if *channelConfig.LogLinks.DestinationIsFolder == true {
 					if !strings.HasSuffix(logPath, string(os.PathSeparator)) {
 						logPath += string(os.PathSeparator)
@@ -533,10 +552,12 @@ func startDownload(inputURL string, filename string, path string, message *disco
 				}
 				if shouldLog {
 					// Prepend
-					prefix := ""
-					if channelConfig.LogLinks.Prefix != nil {
+					prefix := time.Now().Format(time.Stamp)
+
+					/*if channelConfig.LogLinks.Prefix != nil {
 						prefix = *channelConfig.LogLinks.Prefix
-					}
+					}*/
+
 					// More Data
 					additionalInfo := ""
 					if channelConfig.LogLinks.UserData != nil {
@@ -545,10 +566,12 @@ func startDownload(inputURL string, filename string, path string, message *disco
 						}
 					}
 					// Append
-					suffix := ""
-					if channelConfig.LogLinks.Suffix != nil {
+					suffix := " (" + status.Error.Error() + ")"
+
+					/*if channelConfig.LogLinks.Suffix != nil {
 						suffix = *channelConfig.LogLinks.Suffix
-					}
+					}*/
+
 					// New Line
 					newLine += "\n" + prefix + additionalInfo + inputURL + suffix
 
@@ -893,20 +916,22 @@ func tryDownload(inputURL string, filename string, path string, message *discord
 		}
 
 		// Format filename/path
-		filenameDateFormat := config.FilenameDateFormat
-		if channelConfig.OverwriteFilenameDateFormat != nil {
-			if *channelConfig.OverwriteFilenameDateFormat != "" {
-				filenameDateFormat = *channelConfig.OverwriteFilenameDateFormat
+		/*
+			filenameDateFormat := config.FilenameDateFormat
+			if channelConfig.OverwriteFilenameDateFormat != nil {
+				if *channelConfig.OverwriteFilenameDateFormat != "" {
+					filenameDateFormat = *channelConfig.OverwriteFilenameDateFormat
+				}
 			}
-		}
-		messageTime := time.Now()
-		if message.Timestamp != "" {
-			messageTimestamp, err := message.Timestamp.Parse()
-			if err == nil {
-				messageTime = messageTimestamp
+			messageTime := time.Now()
+			if message.Timestamp != "" {
+				messageTimestamp, err := message.Timestamp.Parse()
+				if err == nil {
+					messageTime = messageTimestamp
+				}
 			}
-		}
-		completePath := path + subfolder + messageTime.Format(filenameDateFormat) + filename
+		*/
+		completePath := path + subfolder + filename
 
 		// Check if exists
 		if _, err := os.Stat(completePath); err == nil {

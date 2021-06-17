@@ -104,7 +104,12 @@ func handleMessage(m *discordgo.Message, edited bool, history bool) int64 {
 		// Log Messages to File
 		if channelConfig.LogMessages != nil {
 			if channelConfig.LogMessages.Destination != "" {
-				logPath := channelConfig.LogMessages.Destination
+				var logPath string
+				if channelConfig.LogMessages.Destination == "workingdir" {
+					logPath, _ = os.Getwd()
+				} else {
+					logPath = channelConfig.LogMessages.Destination
+				}
 				if *channelConfig.LogMessages.DestinationIsFolder == true {
 					if !strings.HasSuffix(logPath, string(os.PathSeparator)) {
 						logPath += string(os.PathSeparator)
@@ -166,10 +171,12 @@ func handleMessage(m *discordgo.Message, edited bool, history bool) int64 {
 
 					var newLine string
 					// Prepend
-					prefix := ""
-					if channelConfig.LogMessages.Prefix != nil {
-						prefix = *channelConfig.LogMessages.Prefix
-					}
+					prefix := time.Now().Format(time.Stamp)
+
+					/*if channelConfig.LogLinks.Prefix != nil {
+						prefix = *channelConfig.LogLinks.Prefix
+					}*/
+
 					// More Data
 					additionalInfo := ""
 					if channelConfig.LogMessages.UserData != nil {

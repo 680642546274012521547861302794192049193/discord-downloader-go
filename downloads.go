@@ -484,8 +484,13 @@ func startDownload(inputURL string, filename string, path string, message *disco
 		if channelConfig.LogLinks != nil {
 			if channelConfig.LogLinks.Destination != "" {
 				var logPath string
+				var err error
 				if channelConfig.LogLinks.Destination == "workingdir" {
-					logPath, _ = os.Getwd()
+					logPath, err = os.Getwd()
+					if err != nil {
+						fmt.Println("Failed to get working directory, defaulting to workingdir/")
+						logPath = channelConfig.LogLinks.Destination
+					}
 				} else {
 					logPath = channelConfig.LogLinks.Destination
 				}
@@ -550,12 +555,16 @@ func startDownload(inputURL string, filename string, path string, message *disco
 
 				var newLine string
 				shouldLog := true
+				whattolog := "success"
 
 				// Log Failures
+				// Why does logFailure also seem to activate logDownloads? I only want error to be logged... odd way of implementing with shouldLog
 				if status.Status > downloadSuccess {
 					shouldLog = *channelConfig.LogLinks.LogFailures // will not log if LogFailures is false
+					whattolog = "error"
 				} else if *channelConfig.LogLinks.LogDownloads { // Log Downloads
 					shouldLog = true
+					whattolog = "success"
 				}
 				// Filter Duplicates
 				if channelConfig.LogLinks.FilterDuplicates != nil {
@@ -566,32 +575,32 @@ func startDownload(inputURL string, filename string, path string, message *disco
 					}
 				}
 				if shouldLog {
-					// Prepend
-					prefix := time.Now().Format(time.Stamp)
+					if whattolog == "error" { // will not log if whattolog = error && logdownloads = true
+						if *channelConfig.LogLinks.LogFailures == true {
+							// Prepend
+							prefix := "[" + time.Now().Format(time.Stamp) + "] "
 
-					/*if channelConfig.LogLinks.Prefix != nil {
-						prefix = *channelConfig.LogLinks.Prefix
-					}*/
+							/*if channelConfig.LogLinks.Prefix != nil {
+								prefix = *channelConfig.LogLinks.Prefix
+							}*/
 
-					// More Data
-					additionalInfo := ""
-					if channelConfig.LogLinks.UserData != nil {
-						if *channelConfig.LogLinks.UserData == true {
-							additionalInfo = fmt.Sprintf("[%s/%s] \"%s\"#%s (%s) @ %s: ", message.GuildID, message.ChannelID, message.Author.Username, message.Author.Discriminator, message.Author.ID, message.Timestamp)
+							// More Data
+							additionalInfo := ""
+							if channelConfig.LogLinks.UserData != nil {
+								if *channelConfig.LogLinks.UserData == true {
+									additionalInfo = fmt.Sprintf("[%s/%s] \"%s\"#%s (%s) @ %s: ", message.GuildID, message.ChannelID, message.Author.Username, message.Author.Discriminator, message.Author.ID, message.Timestamp)
+								}
+							}
+							// Append
+							suffix := " (" + regexp.MustCompile(".*-[ ]").ReplaceAllString(getDownloadStatusString(status.Status), "") + ")"
+
+							// New Line
+							newLine += "\n" + prefix + additionalInfo + inputURL + suffix
+
+							if _, err = f.WriteString(newLine); err != nil {
+								log.Println(color.RedString("[channelConfig.LogLinks] Failed to append file:\t%s", err))
+							}
 						}
-					}
-					// Append
-					suffix := " (" + status.Error.Error() + ")"
-
-					/*if channelConfig.LogLinks.Suffix != nil {
-						suffix = *channelConfig.LogLinks.Suffix
-					}*/
-
-					// New Line
-					newLine += "\n" + prefix + additionalInfo + inputURL + suffix
-
-					if _, err = f.WriteString(newLine); err != nil {
-						log.Println(color.RedString("[channelConfig.LogLinks] Failed to append file:\t%s", err))
 					}
 				}
 			}

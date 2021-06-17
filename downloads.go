@@ -575,7 +575,7 @@ func startDownload(inputURL string, filename string, path string, message *disco
 					}
 				}
 				if shouldLog {
-					if whattolog == "error" { // will not log if whattolog = error && logdownloads = true
+					if whattolog == "error" { // will not log if whattolog = error && logdownloads = false
 						if *channelConfig.LogLinks.LogFailures == true {
 							// Prepend
 							prefix := "[" + time.Now().Format(time.Stamp) + "] "

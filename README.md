@@ -5,9 +5,10 @@
 //// Customized fork for 680642546274012521547861302794192049193:
 - mobile.twitter.com & photo/# replacing
 - "workingdir" destination will resolve to the current working directory (for logLinks)
-- hardcoded prefix=timestamp, suffix=error (for logLinks)
+- hardcoded prefix=timestamp, suffix=error (for logLinks, assumes logFailures is always true)
 - savePossibleDuplicates will not download saved URLs, only download same filenames
 - filenames don't include date and time
+- customLogging0
 
 <p align="center">
     <a href="https://travis-ci.com/get-got/discord-downloader-go" alt="Travis Build">

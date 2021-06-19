@@ -839,17 +839,28 @@ func tryDownload(inputURL string, filename string, path string, message *discord
 		// Names
 		sourceChannelName := message.ChannelID
 		sourceName := "UNKNOWN"
-		sourceChannel, err := bot.State.Channel(message.ChannelID)
+		sourceChannel, _ := bot.State.Channel(message.ChannelID)
 		if sourceChannel != nil {
+			// Channel Naming
 			if sourceChannel.Name != "" {
 				sourceChannelName = sourceChannel.Name
 			}
 			switch sourceChannel.Type {
 			case discordgo.ChannelTypeGuildText:
+				// Server Naming
 				if sourceChannel.GuildID != "" {
 					sourceGuild, _ := bot.State.Guild(sourceChannel.GuildID)
 					if sourceGuild != nil && sourceGuild.Name != "" {
 						sourceName = "\"" + sourceGuild.Name + "\""
+					}
+				}
+				// Category Naming
+				if sourceChannel.ParentID != "" {
+					sourceParent, _ := bot.State.Channel(sourceChannel.ParentID)
+					if sourceParent != nil {
+						if sourceParent.Name != "" {
+							sourceChannelName = sourceParent.Name + " - " + sourceChannelName
+						}
 					}
 				}
 			case discordgo.ChannelTypeDM:
@@ -874,7 +885,7 @@ func tryDownload(inputURL string, filename string, path string, message *discord
 					subfolderSuffix = subfolderSuffix + string(os.PathSeparator)
 					subfolder = subfolder + subfolderSuffix
 					// Create folder.
-					err := os.MkdirAll(path+subfolder, 0755)
+					err := os.MkdirAll(filepath.Clean(path+subfolder), 0755)
 					if err != nil {
 						log.Println(logPrefixErrorHere, color.HiRedString("Error while creating server subfolder \"%s\": %s", path, err))
 						return mDownloadStatus(downloadFailedCreatingSubfolder, err)
@@ -893,7 +904,7 @@ func tryDownload(inputURL string, filename string, path string, message *discord
 				if subfolderSuffix != "" {
 					subfolder = subfolder + subfolderSuffix + string(os.PathSeparator)
 					// Create folder.
-					err := os.MkdirAll(path+subfolder, 0755)
+					err := os.MkdirAll(filepath.Clean(path+subfolder), 0755)
 					if err != nil {
 						log.Println(logPrefixErrorHere, color.HiRedString("Error while creating channel subfolder \"%s\": %s", path, err))
 						return mDownloadStatus(downloadFailedCreatingSubfolder, err)
@@ -913,7 +924,7 @@ func tryDownload(inputURL string, filename string, path string, message *discord
 				if subfolderSuffix != "" {
 					subfolder = subfolder + subfolderSuffix + string(os.PathSeparator)
 					// Create folder.
-					err := os.MkdirAll(path+subfolder, 0755)
+					err := os.MkdirAll(filepath.Clean(path+subfolder), 0755)
 					if err != nil {
 						log.Println(logPrefixErrorHere, color.HiRedString("Error while creating user subfolder \"%s\": %s", path, err))
 						return mDownloadStatus(downloadFailedCreatingSubfolder, err)
@@ -940,7 +951,7 @@ func tryDownload(inputURL string, filename string, path string, message *discord
 			if subfolderSuffix != "" {
 				subfolder = subfolder + subfolderSuffix + string(os.PathSeparator)
 				// Create folder.
-				err := os.MkdirAll(path+subfolder, 0755)
+				err := os.MkdirAll(filepath.Clean(path+subfolder), 0755)
 				if err != nil {
 					log.Println(logPrefixErrorHere, color.HiRedString("Error while creating type subfolder \"%s\": %s", path+subfolder, err))
 					return mDownloadStatus(downloadFailedCreatingSubfolder, err)

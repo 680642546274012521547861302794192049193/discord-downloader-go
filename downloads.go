@@ -718,16 +718,14 @@ func tryDownload(inputURL string, filename string, path string, message *discord
 					}
 				}
 				// Category Naming
-				/*
-					if sourceChannel.ParentID != "" {
-						sourceParent, _ := bot.State.Channel(sourceChannel.ParentID)
-						if sourceParent != nil {
-							if sourceParent.Name != "" {
-								sourceChannelName = sourceParent.Name + " - " + sourceChannelName
-							}
+				if sourceChannel.ParentID != "" {
+					sourceParent, _ := bot.State.Channel(sourceChannel.ParentID)
+					if sourceParent != nil {
+						if sourceParent.Name != "" {
+							sourceChannelName = sourceParent.Name + " - " + sourceChannelName
 						}
 					}
-				*/
+				}
 			case discordgo.ChannelTypeDM:
 				sourceName = "Direct Messages"
 			case discordgo.ChannelTypeGroupDM:

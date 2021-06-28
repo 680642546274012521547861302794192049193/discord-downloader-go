@@ -72,7 +72,7 @@ func handleHistory(commandingMessage *discordgo.Message, subjectChannelID string
 	var err error
 	var message *discordgo.Message = nil
 
-	if isChannelRegistered(subjectChannelID) {
+	if isChannelRegistered(subjectChannelID) && !stringInSlice(subjectChannelID, *config.AllBlacklistChannels) {
 		channelConfig := getChannelConfig(subjectChannelID)
 
 		// Open Cache File?

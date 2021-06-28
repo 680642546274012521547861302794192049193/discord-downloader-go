@@ -819,24 +819,24 @@ func isChannelRegistered(ChannelID string) bool {
 		}
 	}
 	// All
-	//if config.All != nil {
-	if config.AllBlacklistChannels != nil {
-		if stringInSlice(ChannelID, *config.AllBlacklistChannels) {
-			return false
-		}
-	}
-	if config.AllBlacklistServers != nil {
-		guild, err := bot.State.Guild(ChannelID)
-		if err == nil {
-			if stringInSlice(guild.ID, *config.AllBlacklistServers) {
+	if config.All != nil {
+		if config.AllBlacklistChannels != nil {
+			if stringInSlice(ChannelID, *config.AllBlacklistChannels) {
 				return false
 			}
-		} else {
-			log.Println(color.HiRedString("Error finding server info for channel:\t%s", err))
 		}
+		if config.AllBlacklistServers != nil {
+			guild, err := bot.State.Guild(ChannelID)
+			if err == nil {
+				if stringInSlice(guild.ID, *config.AllBlacklistServers) {
+					return false
+				}
+			} else {
+				log.Println(color.HiRedString("Error finding server info for channel:\t%s", err))
+			}
+		}
+		return true
 	}
-	//return true
-	//}
 	return false
 }
 

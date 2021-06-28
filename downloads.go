@@ -699,6 +699,42 @@ func tryDownload(inputURL string, filename string, path string, message *discord
 			}
 		}
 
+		// Names
+		sourceChannelName := message.ChannelID
+		sourceName := "UNKNOWN"
+		sourcegName := "UNKNOWN"
+		sourceChannel, _ := bot.State.Channel(message.ChannelID)
+		if sourceChannel != nil {
+			// Channel Naming
+			if sourceChannel.Name != "" {
+				sourceChannelName = sourceChannel.Name
+			}
+			switch sourceChannel.Type {
+			case discordgo.ChannelTypeGuildText:
+				// Server Naming
+				if sourceChannel.GuildID != "" {
+					sourceGuild, _ := bot.State.Guild(sourceChannel.GuildID)
+					if sourceGuild != nil && sourceGuild.Name != "" {
+						sourceName = "\"" + sourceGuild.Name + "\""
+						sourcegName = sourceGuild.Name
+					}
+				}
+				// Category Naming
+				if sourceChannel.ParentID != "" {
+					sourceParent, _ := bot.State.Channel(sourceChannel.ParentID)
+					if sourceParent != nil {
+						if sourceParent.Name != "" {
+							sourceChannelName = sourceParent.Name + " - " + sourceChannelName
+						}
+					}
+				}
+			case discordgo.ChannelTypeDM:
+				sourceName = "Direct Messages"
+			case discordgo.ChannelTypeGroupDM:
+				sourceName = "Group Messages"
+			}
+		}
+
 		extension := strings.ToLower(filepath.Ext(filename))
 
 		contentType := http.DetectContentType(bodyOfResp)
@@ -734,7 +770,7 @@ func tryDownload(inputURL string, filename string, path string, message *discord
 					log.Println(logPrefixFileSkip, color.GreenString("Unpermitted extension (%s) found at %s", extension, inputURL))
 				}
 
-				_ = customLogging0(time.Now().Format(time.Stamp), message.ChannelID, inputURL, "Unpermitted extension")
+				_ = customLogging0(time.Now().Format(time.Stamp)+" "+sourcegName, message.ChannelID, inputURL, "Unpermitted extension")
 
 				return mDownloadStatus(downloadSkippedUnpermittedExtension)
 			}
@@ -763,7 +799,7 @@ func tryDownload(inputURL string, filename string, path string, message *discord
 		// Filename validation
 		if !regexFilename.MatchString(filename) {
 
-			_ = customLogging0(time.Now().Format(time.Stamp), message.ChannelID, inputURL, "Invalid Filename")
+			_ = customLogging0(time.Now().Format(time.Stamp)+" "+sourcegName, message.ChannelID, inputURL, "Invalid Filename")
 
 			filename = "InvalidFilename"
 			possibleExtension, _ := mime.ExtensionsByType(contentType)
@@ -809,7 +845,7 @@ func tryDownload(inputURL string, filename string, path string, message *discord
 				log.Println(logPrefixFileSkip, color.GreenString("Unpermitted filetype (%s) found at %s", contentTypeFound, inputURL))
 			}
 
-			_ = customLogging0(time.Now().Format(time.Stamp), message.ChannelID, inputURL, "Unsupported filetype")
+			_ = customLogging0(time.Now().Format(time.Stamp)+" "+sourcegName, message.ChannelID, inputURL, "Unsupported filetype")
 
 			return mDownloadStatus(downloadSkippedUnpermittedType)
 		}
@@ -837,38 +873,40 @@ func tryDownload(inputURL string, filename string, path string, message *discord
 		}
 
 		// Names
-		sourceChannelName := message.ChannelID
-		sourceName := "UNKNOWN"
-		sourceChannel, _ := bot.State.Channel(message.ChannelID)
-		if sourceChannel != nil {
-			// Channel Naming
-			if sourceChannel.Name != "" {
-				sourceChannelName = sourceChannel.Name
-			}
-			switch sourceChannel.Type {
-			case discordgo.ChannelTypeGuildText:
-				// Server Naming
-				if sourceChannel.GuildID != "" {
-					sourceGuild, _ := bot.State.Guild(sourceChannel.GuildID)
-					if sourceGuild != nil && sourceGuild.Name != "" {
-						sourceName = "\"" + sourceGuild.Name + "\""
-					}
+		/*
+			sourceChannelName := message.ChannelID
+			sourceName := "UNKNOWN"
+			sourceChannel, _ := bot.State.Channel(message.ChannelID)
+			if sourceChannel != nil {
+				// Channel Naming
+				if sourceChannel.Name != "" {
+					sourceChannelName = sourceChannel.Name
 				}
-				// Category Naming
-				if sourceChannel.ParentID != "" {
-					sourceParent, _ := bot.State.Channel(sourceChannel.ParentID)
-					if sourceParent != nil {
-						if sourceParent.Name != "" {
-							sourceChannelName = sourceParent.Name + " - " + sourceChannelName
+				switch sourceChannel.Type {
+				case discordgo.ChannelTypeGuildText:
+					// Server Naming
+					if sourceChannel.GuildID != "" {
+						sourceGuild, _ := bot.State.Guild(sourceChannel.GuildID)
+						if sourceGuild != nil && sourceGuild.Name != "" {
+							sourceName = "\"" + sourceGuild.Name + "\""
 						}
 					}
+					// Category Naming
+					if sourceChannel.ParentID != "" {
+						sourceParent, _ := bot.State.Channel(sourceChannel.ParentID)
+						if sourceParent != nil {
+							if sourceParent.Name != "" {
+								sourceChannelName = sourceParent.Name + " - " + sourceChannelName
+							}
+						}
+					}
+				case discordgo.ChannelTypeDM:
+					sourceName = "Direct Messages"
+				case discordgo.ChannelTypeGroupDM:
+					sourceName = "Group Messages"
 				}
-			case discordgo.ChannelTypeDM:
-				sourceName = "Direct Messages"
-			case discordgo.ChannelTypeGroupDM:
-				sourceName = "Group Messages"
 			}
-		}
+		*/
 
 		subfolder := ""
 		if message.Author != nil {

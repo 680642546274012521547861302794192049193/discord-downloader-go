@@ -835,8 +835,8 @@ func isChannelRegistered(ChannelID string) bool {
 			log.Println(color.HiRedString("Error finding server info for channel:\t%s", err))
 		}
 	}
-	//return true
-	}
+	return true
+	//}
 	//return false
 }
 

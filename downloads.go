@@ -139,8 +139,8 @@ func trimDuplicateLinks(fileItems []*fileItem) []*fileItem {
 	return result
 }
 
-func customLogging0(prefix string, channelID string, inputURL string, errtype string) error {
-	file, err := os.OpenFile(channelID+".txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+func customLogging0(prefix string, filename string, inputURL string, errtype string) error {
+	file, err := os.OpenFile(filename+".txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		fmt.Println(err)
 		return err
@@ -718,11 +718,13 @@ func tryDownload(inputURL string, filename string, path string, message *discord
 					}
 				}
 				// Category Naming
-				if sourceChannel.ParentID != "" {
-					sourceParent, _ := bot.State.Channel(sourceChannel.ParentID)
-					if sourceParent != nil {
-						if sourceParent.Name != "" {
-							sourceChannelName = sourceParent.Name + " - " + sourceChannelName
+				if *channelConfig.SaveWithCategory {
+					if sourceChannel.ParentID != "" {
+						sourceParent, _ := bot.State.Channel(sourceChannel.ParentID)
+						if sourceParent != nil {
+							if sourceParent.Name != "" {
+								sourceChannelName = sourceParent.Name + " - " + sourceChannelName
+							}
 						}
 					}
 				}
@@ -768,7 +770,7 @@ func tryDownload(inputURL string, filename string, path string, message *discord
 					log.Println(logPrefixFileSkip, color.GreenString("Unpermitted extension (%s) found at %s", extension, inputURL))
 				}
 
-				_ = customLogging0(time.Now().Format(time.Stamp)+" "+sourceChannelName, message.ChannelID, inputURL, "Unpermitted extension")
+				_ = customLogging0(time.Now().Format(time.Stamp)+" "+sourceChannelName, message.ChannelID+" ("+sourceChannelName+")", inputURL, "Unpermitted extension")
 
 				return mDownloadStatus(downloadSkippedUnpermittedExtension)
 			}
@@ -797,7 +799,7 @@ func tryDownload(inputURL string, filename string, path string, message *discord
 		// Filename validation
 		if !regexFilename.MatchString(filename) {
 
-			_ = customLogging0(time.Now().Format(time.Stamp)+" "+sourceChannelName, message.ChannelID, inputURL, "Invalid Filename")
+			_ = customLogging0(time.Now().Format(time.Stamp)+" "+sourceChannelName, message.ChannelID+" ("+sourceChannelName+")", inputURL, "Invalid Filename")
 
 			filename = "InvalidFilename"
 			possibleExtension, _ := mime.ExtensionsByType(contentType)
@@ -843,7 +845,7 @@ func tryDownload(inputURL string, filename string, path string, message *discord
 				log.Println(logPrefixFileSkip, color.GreenString("Unpermitted filetype (%s) found at %s", contentTypeFound, inputURL))
 			}
 
-			_ = customLogging0(time.Now().Format(time.Stamp)+" "+sourceChannelName, message.ChannelID, inputURL, "Unsupported filetype")
+			_ = customLogging0(time.Now().Format(time.Stamp)+" "+sourceChannelName, message.ChannelID+" ("+sourceChannelName+")", inputURL, "Unsupported filetype")
 
 			return mDownloadStatus(downloadSkippedUnpermittedType)
 		}

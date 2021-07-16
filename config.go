@@ -177,6 +177,7 @@ var (
 	ccdSaveOtherFiles         bool = false
 	ccdSavePossibleDuplicates bool = false
 	ccdSaveWithCategory       bool = true
+	ccdSaveWithCID            bool = false
 )
 
 type configurationChannel struct {
@@ -215,6 +216,7 @@ type configurationChannel struct {
 	SaveOtherFiles         *bool `json:"saveOtherFiles,omitempty"`         // optional, defaults
 	SavePossibleDuplicates *bool `json:"savePossibleDuplicates,omitempty"` // optional, defaults
 	SaveWithCategory       *bool `json:"saveWithCategory,omitempty"`       // optional, defaults
+	SaveWithCID            *bool `json:"saveWithCID,omitempty"`            // optional, defaults
 	// Misc Rules
 	Filters     *configurationChannelFilters `json:"filters,omitempty"`     // optional
 	LogLinks    *configurationChannelLog     `json:"logLinks,omitempty"`    // optional
@@ -716,6 +718,9 @@ func channelDefault(channel *configurationChannel) {
 	}
 	if channel.SaveWithCategory == nil {
 		channel.SaveWithCategory = &ccdSaveWithCategory
+	}
+	if channel.SaveWithCID == nil {
+		channel.SaveWithCID = &ccdSaveWithCID
 	}
 
 	if channel.Filters == nil {

@@ -9,7 +9,7 @@
 - savePossibleDuplicates will not download saved URLs, only download same filenames
 - filenames don't include date and time
 - customLogging0
-- saveWithCategory bool
+- saveWithCategory & saveWithCID - defaults to sourceChannel.name if both are false
 
 <p align="center">
     <a href="https://travis-ci.com/get-got/discord-downloader-go" alt="Travis Build">

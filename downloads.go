@@ -705,8 +705,10 @@ func tryDownload(inputURL string, filename string, path string, message *discord
 		sourceChannel, _ := bot.State.Channel(message.ChannelID)
 		if sourceChannel != nil {
 			// Channel Naming
-			if sourceChannel.Name != "" {
-				sourceChannelName = sourceChannel.Name
+			if !*channelConfig.SaveWithCID {
+				if sourceChannel.Name != "" {
+					sourceChannelName = sourceChannel.Name
+				}
 			}
 			switch sourceChannel.Type {
 			case discordgo.ChannelTypeGuildText:
@@ -770,7 +772,7 @@ func tryDownload(inputURL string, filename string, path string, message *discord
 					log.Println(logPrefixFileSkip, color.GreenString("Unpermitted extension (%s) found at %s", extension, inputURL))
 				}
 
-				_ = customLogging0(time.Now().Format(time.Stamp)+" "+sourceChannelName, message.ChannelID+" ("+sourceChannelName+")", inputURL, "Unpermitted extension")
+				_ = customLogging0(time.Now().Format(time.Stamp)+" "+sourceChannelName, message.ChannelID, inputURL, "Unpermitted extension")
 
 				return mDownloadStatus(downloadSkippedUnpermittedExtension)
 			}
@@ -799,7 +801,7 @@ func tryDownload(inputURL string, filename string, path string, message *discord
 		// Filename validation
 		if !regexFilename.MatchString(filename) {
 
-			_ = customLogging0(time.Now().Format(time.Stamp)+" "+sourceChannelName, message.ChannelID+" ("+sourceChannelName+")", inputURL, "Invalid Filename")
+			_ = customLogging0(time.Now().Format(time.Stamp)+" "+sourceChannelName, message.ChannelID, inputURL, "Invalid Filename")
 
 			filename = "InvalidFilename"
 			possibleExtension, _ := mime.ExtensionsByType(contentType)
@@ -845,7 +847,7 @@ func tryDownload(inputURL string, filename string, path string, message *discord
 				log.Println(logPrefixFileSkip, color.GreenString("Unpermitted filetype (%s) found at %s", contentTypeFound, inputURL))
 			}
 
-			_ = customLogging0(time.Now().Format(time.Stamp)+" "+sourceChannelName, message.ChannelID+" ("+sourceChannelName+")", inputURL, "Unsupported filetype")
+			_ = customLogging0(time.Now().Format(time.Stamp)+" "+sourceChannelName, message.ChannelID, inputURL, "Unsupported filetype")
 
 			return mDownloadStatus(downloadSkippedUnpermittedType)
 		}

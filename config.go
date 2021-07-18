@@ -56,6 +56,7 @@ var (
 	cdScanOwnMessages      bool   = false
 	cdCheckPermissions     bool   = true
 	cdAllowGlobalCommands  bool   = true
+	cdCrashOnReconnect     bool   = false
 	cdGithubUpdateChecking bool   = true
 	// Appearance
 	cdPresenceEnabled bool               = true
@@ -83,6 +84,7 @@ func defaultConfiguration() configuration {
 		AllowGlobalCommands:            cdAllowGlobalCommands,
 		AutorunHistory:                 false,
 		AsynchronousHistory:            false,
+		CrashOnReconnect:               cdCrashOnReconnect,
 		DownloadRetryMax:               3,
 		DownloadTimeout:                60,
 		GithubUpdateChecking:           cdGithubUpdateChecking,
@@ -115,6 +117,7 @@ type configuration struct {
 	AllowGlobalCommands            bool                        `json:"allowGlobalCommmands,omitempty"`           // optional, defaults
 	AutorunHistory                 bool                        `json:"autorunHistory,omitempty"`                 // optional, defaults
 	AsynchronousHistory            bool                        `json:"asyncHistory,omitempty"`                   // optional, defaults
+	CrashOnReconnect               bool                        `json:"crashOnReconnect"`                         // optional, defaults
 	DownloadRetryMax               int                         `json:"downloadRetryMax,omitempty"`               // optional, defaults
 	DownloadTimeout                int                         `json:"downloadTimeout,omitempty"`                // optional, defaults
 	GithubUpdateChecking           bool                        `json:"githubUpdateChecking"`                     // optional, defaults
@@ -829,12 +832,12 @@ func isChannelRegistered(ChannelID string) bool {
 		}
 	}
 	// All
-	if config.All != nil {
-		if config.AllBlacklistChannels != nil {
-			if stringInSlice(ChannelID, *config.AllBlacklistChannels) {
-				return false
-			}
+	if config.AllBlacklistChannels != nil {
+		if stringInSlice(ChannelID, *config.AllBlacklistChannels) {
+			return false
 		}
+	}
+	if config.All != nil {
 		if config.AllBlacklistServers != nil {
 			guild, err := bot.State.Guild(ChannelID)
 			if err == nil {

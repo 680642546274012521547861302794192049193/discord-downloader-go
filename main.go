@@ -285,6 +285,10 @@ func main() {
 					log.Println(color.GreenString("Logging in..."))
 					botLogin()
 					log.Println(color.HiGreenString("Reconnected! The bot *should* resume working..."))
+					if config.CrashOnReconnect {
+						log.Println(color.RedString("Crashing!"))
+						os.Exit(3) // May not cleanly exit
+					}
 					// Log Status
 					logStatusMessage(logStatusReconnect)
 				}

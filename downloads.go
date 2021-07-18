@@ -212,6 +212,7 @@ func getDownloadLinks(inputURL string, channelID string) map[string]string {
 	logPrefixErrorHere := color.HiRedString("[getDownloadLinks]")
 
 	inputURL = strings.ReplaceAll(inputURL, "mobile.twitter", "twitter")
+	inputURL = strings.ReplaceAll(inputURL, "fxtwitter.com", "twitter.com") //fxtwitter
 	photo := regexp.MustCompile(`(\/)?photo(\/)?([0-9]+)?(\/)?$`)
 	//sq := regexp.MustCompile(`(\?s=)[0-9]+$`)
 	trailingslash := regexp.MustCompile(`(\/)$`)

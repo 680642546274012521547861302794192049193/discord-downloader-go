@@ -803,17 +803,6 @@ func tryDownload(inputURL string, filename string, path string, message *discord
 				filename += possibleExtension[0]
 			}
 		}
-		// Filename validation
-		if !regexFilename.MatchString(filename) {
-
-			_ = customLogging0(time.Now().Format(time.Stamp)+" "+sourceNameForLogging, message.ChannelID, inputURL, "Invalid Filename")
-
-			filename = "InvalidFilename"
-			possibleExtension, _ := mime.ExtensionsByType(contentType)
-			if len(possibleExtension) > 0 {
-				filename += possibleExtension[0]
-			}
-		}
 
 		// Check Domain
 		if channelConfig.Filters.AllowedDomains != nil || channelConfig.Filters.BlockedDomains != nil {

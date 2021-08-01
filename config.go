@@ -185,11 +185,12 @@ var (
 
 type configurationChannel struct {
 	// Main
-	ChannelID   string    `json:"channel,omitempty"`  // used for config.Channels
-	ChannelIDs  *[]string `json:"channels,omitempty"` // ---> alternative to ChannelID
-	ServerID    string    `json:"server,omitempty"`   // used for config.Servers
-	ServerIDs   *[]string `json:"servers,omitempty"`  // ---> alternative to ServerID
-	Destination string    `json:"destination"`        // required
+	ChannelID           string    `json:"channel,omitempty"`           // used for config.Channels
+	ChannelIDs          *[]string `json:"channels,omitempty"`          // ---> alternative to ChannelID
+	ServerID            string    `json:"server,omitempty"`            // used for config.Servers
+	ServerIDs           *[]string `json:"servers,omitempty"`           // ---> alternative to ServerID
+	BlacklistChannelIDs *[]string `json:"blacklistChannels,omitempty"` // for server.ServerID & server.ServerIDs
+	Destination         string    `json:"destination"`                 // required
 	// Setup
 	Enabled                 *bool `json:"enabled,omitempty"`                 // optional, defaults
 	AllowCommands           *bool `json:"allowCommands,omitempty"`           // optional, defaults
@@ -316,19 +317,31 @@ type configurationAdminChannel struct {
 
 //#endregion
 
-func loadConfig() {
-	// Determine settings file type
-	if _, err := os.Stat(configFileBase + ".json"); err == nil {
-		configFile = configFileBase + ".json"
-		configFileC = false
-	} else if _, err := os.Stat(configFileBase + ".jsonc"); err == nil {
+func initConfig() {
+	if _, err := os.Stat(configFileBase + ".jsonc"); err == nil {
 		configFile = configFileBase + ".jsonc"
 		configFileC = true
+	} else {
+		configFile = configFileBase + ".json"
+		configFileC = false
 	}
+}
+
+func loadConfig() {
+	// Determine json type
+	if _, err := os.Stat(configFileBase + ".jsonc"); err == nil {
+		configFile = configFileBase + ".jsonc"
+		configFileC = true
+	} else {
+		configFile = configFileBase + ".json"
+		configFileC = false
+	}
+	// .
+	log.Println(logPrefixSettings, color.YellowString("Loading from \"%s\"...", configFile))
 	// Load settings
 	configContent, err := ioutil.ReadFile(configFile)
 	if err != nil {
-		log.Println(color.HiRedString("Failed to open settings file...\t%s", err))
+		log.Println(logPrefixSettings, color.HiRedString("Failed to open file...\t%s", err))
 		createConfig()
 		properExit()
 	} else {
@@ -348,8 +361,8 @@ func loadConfig() {
 			err = json.Unmarshal([]byte(fixed), &newConfig)
 		}
 		if err != nil {
-			log.Println(color.HiRedString("Failed to parse settings file...\t%s", err))
-			log.Println(logPrefixHelper, color.MagentaString("Please ensure you're following proper JSON format syntax."))
+			log.Println(logPrefixSettings, color.HiRedString("Failed to parse settings file...\t%s", err))
+			log.Println(logPrefixSettings, color.MagentaString("Please ensure you're following proper JSON format syntax."))
 			properExit()
 		}
 		// Constants
@@ -367,8 +380,8 @@ func loadConfig() {
 				err = json.Unmarshal([]byte(fixed), &newConfig)
 			}
 			if err != nil {
-				log.Println(color.HiRedString("Failed to re-parse settings file after replacing constants...\t%s", err))
-				log.Println(logPrefixHelper, color.MagentaString("Please ensure you're following proper JSON format syntax."))
+				log.Println(logPrefixSettings, color.HiRedString("Failed to re-parse settings file after replacing constants...\t%s", err))
+				log.Println(logPrefixSettings, color.MagentaString("Please ensure you're following proper JSON format syntax."))
 				properExit()
 			}
 			newConfig.Constants = nil
@@ -395,9 +408,9 @@ func loadConfig() {
 		if config.DebugOutput {
 			s, err := json.MarshalIndent(config, "", "\t")
 			if err != nil {
-				log.Println(logPrefixDebug, color.HiRedString("Failed to output settings...\t%s", err))
+				log.Println(logPrefixSettings, logPrefixDebug, color.HiRedString("Failed to output...\t%s", err))
 			} else {
-				log.Println(logPrefixDebug, color.HiYellowString("Parsed Fixed Settings into JSON:\n\n"),
+				log.Println(logPrefixSettings, logPrefixDebug, color.HiYellowString("Parsed into JSON:\n\n"),
 					color.YellowString(string(s)),
 				)
 			}
@@ -407,10 +420,10 @@ func loadConfig() {
 		if (config.Credentials.Token == "" || config.Credentials.Token == placeholderToken) &&
 			(config.Credentials.Email == "" || config.Credentials.Email == placeholderEmail) &&
 			(config.Credentials.Password == "" || config.Credentials.Password == placeholderPassword) {
-			log.Println(color.HiRedString("No valid discord login found. Token, Email, and Password are all invalid..."))
-			log.Println(color.HiYellowString("Please save your credentials & info into \"%s\" then restart...", configFile))
-			log.Println(logPrefixHelper, color.MagentaString("If your credentials are already properly saved, please ensure you're following proper JSON format syntax."))
-			log.Println(logPrefixHelper, color.MagentaString("You DO NOT NEED `Token` *AND* `Email`+`Password`, just one OR the other."))
+			log.Println(logPrefixSettings, color.HiRedString("No valid discord login found. Token, Email, and Password are all invalid..."))
+			log.Println(logPrefixSettings, color.HiYellowString("Please save your credentials & info into \"%s\" then restart...", configFile))
+			log.Println(logPrefixSettings, color.MagentaString("If your credentials are already properly saved, please ensure you're following proper JSON format syntax."))
+			log.Println(logPrefixSettings, color.MagentaString("You DO NOT NEED `Token` *AND* `Email`+`Password`, just one OR the other."))
 			properExit()
 		}
 	}
@@ -634,8 +647,8 @@ func createConfig() {
 		}
 	}
 
-	log.Println(logPrefixHelper, color.MagentaString("The default settings will be missing some options to avoid clutter."))
-	log.Println(logPrefixHelper, color.HiMagentaString("There are MANY MORE SETTINGS! If you would like to maximize customization, see the GitHub README for all available settings."))
+	log.Println(logPrefixSetup, color.MagentaString("The default settings will be missing some options to avoid clutter."))
+	log.Println(logPrefixSetup, color.HiMagentaString("There are MANY MORE SETTINGS! If you would like to maximize customization, see the GitHub README for all available settings."))
 
 	defaultJSON, err := json.MarshalIndent(defaultConfig, "", "\t")
 	if err != nil {
@@ -647,8 +660,8 @@ func createConfig() {
 		} else {
 			log.Println(logPrefixSetup, color.HiYellowString("Created new settings file..."))
 			log.Println(logPrefixSetup, color.HiYellowString("Please save your credentials & info into \"%s\" then restart...", configFile))
-			log.Println(logPrefixHelper, color.MagentaString("You DO NOT NEED `Token` *AND* `Email`+`Password`, just one OR the other."))
-			log.Println(logPrefixHelper, color.MagentaString("See README on GitHub for help and more info..."))
+			log.Println(logPrefixSetup, color.MagentaString("You DO NOT NEED `Token` *AND* `Email`+`Password`, just one OR the other."))
+			log.Println(logPrefixSetup, color.MagentaString("See README on GitHub for help and more info..."))
 		}
 	}
 }
@@ -812,6 +825,12 @@ func isChannelRegistered(ChannelID string) bool {
 			if err == nil {
 				for _, channel := range guild.Channels {
 					if ChannelID == channel.ID {
+						// Channel Blacklisting within Server
+						if item.BlacklistChannelIDs != nil {
+							if stringInSlice(ChannelID, *item.BlacklistChannelIDs) {
+								return false
+							}
+						}
 						return true
 					}
 				}
@@ -824,6 +843,12 @@ func isChannelRegistered(ChannelID string) bool {
 				if err == nil {
 					for _, channel := range guild.Channels {
 						if ChannelID == channel.ID {
+							// Channel Blacklisting within Servers
+							if item.BlacklistChannelIDs != nil {
+								if stringInSlice(ChannelID, *item.BlacklistChannelIDs) {
+									return false
+								}
+							}
 							return true
 						}
 					}

@@ -26,7 +26,8 @@ func uptime() time.Duration {
 
 func properExit() {
 	// Not formatting string because I only want the exit message to be red.
-	log.Println(color.HiRedString("Exiting in 15 seconds"), "- uptime was ", durafmt.Parse(time.Since(startTime)).String(), "...")
+	log.Println(color.HiRedString("[EXIT IN 15 SECONDS]"), " Uptime was", durafmt.Parse(time.Since(startTime)).String(), "...")
+	log.Println(color.HiCyanString("--------------------------------------------------------------------------------"))
 	time.Sleep(15 * time.Second)
 	os.Exit(1)
 }
@@ -97,6 +98,28 @@ func boolS(val bool) string {
 		return "ON"
 	}
 	return "OFF"
+}
+
+func pluralS(num int) string {
+	if num == 1 {
+		return ""
+	}
+	return "s"
+}
+
+func wrapHyphens(i string, l int) string {
+	n := i
+	if len(n) < l {
+		n = "- " + n + " -"
+		for len(n) < l {
+			n = "-" + n + "-"
+		}
+	}
+	return n
+}
+
+func wrapHyphensW(i string) string {
+	return wrapHyphens(i, 80)
 }
 
 //#endregion
@@ -170,7 +193,7 @@ func getJSONwithHeaders(url string, target interface{}, headers map[string]strin
 func filenameFromURL(inputURL string) string {
 	base := path.Base(inputURL)
 	parts := strings.Split(base, "?")
-	return parts[0]
+	return path.Clean(parts[0])
 }
 
 func filepathExtension(filepath string) string {

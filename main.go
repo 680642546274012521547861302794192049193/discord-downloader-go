@@ -2,12 +2,14 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/url"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -37,6 +39,10 @@ var (
 	startTime        time.Time
 	timeLastUpdated  time.Time
 	cachedDownloadID int
+
+	invalidAdminChannels []string
+	invalidChannels      []string
+	invalidServers       []string
 
 	configReloadLastTime time.Time
 )
@@ -200,33 +206,45 @@ func main() {
 	bot.AddHandler(messageUpdate)
 
 	// Source Validation
-	var invalidSources int
 	if config.DebugOutput {
 		log.Println(logPrefixDebugLabel("Validation"), color.HiYellowString("Validating configured channels/servers..."))
 	}
+	//-
 	if config.AdminChannels != nil {
 		for _, adminChannel := range config.AdminChannels {
-			_, err := bot.State.Channel(adminChannel.ChannelID)
-			if err != nil {
-				invalidSources++
-				log.Println(color.HiRedString("Bot cannot access admin channel %s...\t%s", adminChannel.ChannelID, err))
+			if adminChannel.ChannelIDs != nil {
+				for _, subchannel := range *adminChannel.ChannelIDs {
+					_, err := bot.State.Channel(subchannel)
+					if err != nil {
+						invalidAdminChannels = append(invalidAdminChannels, subchannel)
+						log.Println(logPrefixErrorLabel("Validation"), color.HiRedString("Bot cannot access admin subchannel %s...\t%s", subchannel, err))
+					}
+				}
+
+			} else {
+				_, err := bot.State.Channel(adminChannel.ChannelID)
+				if err != nil {
+					invalidAdminChannels = append(invalidAdminChannels, adminChannel.ChannelID)
+					log.Println(logPrefixErrorLabel("Validation"), color.HiRedString("Bot cannot access admin channel %s...\t%s", adminChannel.ChannelID, err))
+				}
 			}
 		}
 	}
+	//-
 	for _, server := range config.Servers {
 		if server.ServerIDs != nil {
 			for _, subserver := range *server.ServerIDs {
 				_, err := bot.State.Guild(subserver)
 				if err != nil {
-					invalidSources++
-					log.Println(color.HiRedString(logPrefixDebugLabel("Validation"), "Bot cannot access subserver %s...\t%s", subserver, err))
+					invalidServers = append(invalidServers, subserver)
+					log.Println(logPrefixErrorLabel("Validation"), color.HiRedString("Bot cannot access subserver %s...\t%s", subserver, err))
 				}
 			}
 		} else {
 			_, err := bot.State.Guild(server.ServerID)
 			if err != nil {
-				invalidSources++
-				log.Println(color.HiRedString(logPrefixDebugLabel("Validation"), "Bot cannot access server %s...\t%s", server.ServerID, err))
+				invalidServers = append(invalidServers, server.ServerID)
+				log.Println(logPrefixErrorLabel("Validation"), color.HiRedString("Bot cannot access server %s...\t%s", server.ServerID, err))
 			}
 		}
 	}
@@ -235,25 +253,36 @@ func main() {
 			for _, subchannel := range *channel.ChannelIDs {
 				_, err := bot.State.Channel(subchannel)
 				if err != nil {
-					invalidSources++
-					log.Println(color.HiRedString("Bot cannot access subchannel %s...\t%s", subchannel, err))
+					invalidChannels = append(invalidChannels, subchannel)
+					log.Println(logPrefixErrorLabel("Validation"), color.HiRedString("Bot cannot access subchannel %s...\t%s", subchannel, err))
 				}
 			}
 
 		} else {
 			_, err := bot.State.Channel(channel.ChannelID)
 			if err != nil {
-				invalidSources++
-				log.Println(color.HiRedString("Bot cannot access channel %s...\t%s", channel.ChannelID, err))
+				invalidChannels = append(invalidChannels, channel.ChannelID)
+				log.Println(logPrefixErrorLabel("Validation"), color.HiRedString("Bot cannot access channel %s...\t%s", channel.ChannelID, err))
 			}
 		}
 	}
-	if config.DebugOutput {
-		if invalidSources > 0 {
-			log.Println(logPrefixDebugLabel("Validation"), color.HiRedString("Found %d invalid channels/servers in configuration...", invalidSources))
-		} else {
-			log.Println(logPrefixDebugLabel("Validation"), color.HiGreenString("All channels/servers successfully validated!"))
+	//-
+	invalidSources := len(invalidAdminChannels) + len(invalidChannels) + len(invalidServers)
+	if invalidSources > 0 {
+		log.Println(logPrefixErrorLabel("Validation"), color.HiRedString("Found %d invalid channels/servers in configuration...", invalidSources))
+		logMsg := fmt.Sprintf("Validation found %d invalid sources...\n", invalidSources)
+		if len(invalidAdminChannels) > 0 {
+			logMsg += fmt.Sprintf("\n**- Admin Channels: (%d)** - %s", len(invalidAdminChannels), strings.Join(invalidAdminChannels, ", "))
 		}
+		if len(invalidServers) > 0 {
+			logMsg += fmt.Sprintf("\n**- Download Servers: (%d)** - %s", len(invalidServers), strings.Join(invalidServers, ", "))
+		}
+		if len(invalidChannels) > 0 {
+			logMsg += fmt.Sprintf("\n**- Download Channels: (%d)** - %s", len(invalidChannels), strings.Join(invalidChannels, ", "))
+		}
+		logErrorMessage(logMsg)
+	} else if config.DebugOutput {
+		log.Println(logPrefixDebugLabel("Validation"), color.HiGreenString("All channels/servers successfully validated!"))
 	}
 
 	// Start Presence
@@ -271,6 +300,65 @@ func main() {
 
 	// Log Status
 	logStatusMessage(logStatusStartup)
+
+	//#region Cache Constants
+	constants := make(map[string]string)
+	//--- Compile constants
+	for _, server := range bot.State.Guilds {
+		serverKey := fmt.Sprintf("SERVER_%s", stripSymbols(server.Name))
+		serverKey = strings.ReplaceAll(serverKey, " ", "_")
+		for strings.Contains(serverKey, "__") {
+			serverKey = strings.ReplaceAll(serverKey, "__", "_")
+		}
+		serverKey = strings.ToUpper(serverKey)
+		if constants[serverKey] == "" {
+			constants[serverKey] = server.ID
+		} else if config.DebugOutput {
+			log.Println(logPrefixDebug, "[Constants]", color.HiYellowString("%s already cached (processing %s, has %s stored)", serverKey, server.ID, constants[serverKey]))
+		}
+		for _, channel := range server.Channels {
+			if channel.Type != discordgo.ChannelTypeGuildCategory {
+				categoryName := ""
+				if channel.ParentID != "" {
+					channelParent, err := bot.State.Channel(channel.ParentID)
+					if err == nil {
+						categoryName = channelParent.Name
+					}
+				}
+				channelKey := fmt.Sprintf("CHANNEL_%s_%s_%s", stripSymbols(server.Name), stripSymbols(categoryName), stripSymbols(channel.Name))
+				channelKey = strings.ReplaceAll(channelKey, " ", "_")
+				for strings.Contains(channelKey, "__") {
+					channelKey = strings.ReplaceAll(channelKey, "__", "_")
+				}
+				channelKey = strings.ToUpper(channelKey)
+				if constants[channelKey] == "" {
+					constants[channelKey] = channel.ID
+				} else if config.DebugOutput {
+					log.Println(logPrefixDebug, "[Constants]", color.HiYellowString("%s already cached (processing %s/%s, has %s stored)", channelKey, server.ID, channel.ID, constants[channelKey]))
+				}
+			}
+		}
+	}
+	//--- Save constants
+	os.MkdirAll(cachePath, 0755)
+	if _, err := os.Stat(constantsPath); err == nil {
+		err = os.Remove(constantsPath)
+		if err != nil {
+			log.Println("[Constants]", color.HiRedString("Encountered error deleting cache file:\t%s", err))
+		}
+	}
+	constantsStruct := constStruct{}
+	constantsStruct.Constants = constants
+	newJson, err := json.MarshalIndent(constantsStruct, "", "\t")
+	if err != nil {
+		log.Println("[Constants]", color.HiRedString("Failed to format constants...\t%s", err))
+	} else {
+		err := ioutil.WriteFile(constantsPath, newJson, 0644)
+		if err != nil {
+			log.Println("[Constants]", color.HiRedString("Failed to save new constants file...\t%s", err))
+		}
+	}
+	//#endregion
 
 	//#region Background Tasks
 

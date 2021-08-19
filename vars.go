@@ -9,7 +9,7 @@ import (
 const (
 	projectName    = "discord-downloader-go"
 	projectLabel   = "Discord Downloader"
-	projectVersion = "1.6.2-dev"
+	projectVersion = "1.6.3-dev"
 	projectIcon    = "https://cdn.discordapp.com/icons/780985109608005703/9dc25f1b91e6d92664590254e0797fad.webp?size=256"
 
 	projectRepo          = "get-got/discord-downloader-go"
@@ -22,6 +22,7 @@ const (
 	cachePath        = "cache"
 	historyCachePath = cachePath + string(os.PathSeparator) + "history"
 	imgStorePath     = cachePath + string(os.PathSeparator) + "imgStore"
+	constantsPath    = cachePath + string(os.PathSeparator) + "constants.json"
 
 	defaultReact = "✅"
 )
@@ -53,6 +54,9 @@ var (
 
 func logPrefixDebugLabel(label string) string {
 	return color.HiYellowString("[Debug: %s]", label)
+}
+func logPrefixErrorLabel(label string) string {
+	return color.HiRedString("[Error: %s]", label)
 }
 
 const (
